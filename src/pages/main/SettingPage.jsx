@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 // import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import ProfilePicture from "../../components/Setting/ProfilePicture";
@@ -14,6 +15,21 @@ const SettingPage = ({ setProfilePicture, setNickname }) => {
   const navigate = useNavigate();
   const [newNickname, setNewNickname] = useState("");
 
+  // id가 1인 유저의 닉네임 불러오기
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get("http://192.168.219.194:8080/api/1");
+        setNewNickname(response.data.nickname);
+        console.log(response);
+        // {"id":1,"email":"a","username":"a","password":"a","nickname":"버찌냥","birthday":"a","profile_img_name":"a","profile_img_path":"a"}
+      } catch (error) {
+        console.log("에러 발생", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   // const handleProfilePictureChange = (e) => {
   //   const file = e.target.files[0];
   //   if (file) {
@@ -26,10 +42,19 @@ const SettingPage = ({ setProfilePicture, setNickname }) => {
   //   }
   // };
 
-  const handleNicknameChange = () => {
-    setNickname(newNickname); // Update nickname in App.js
-    setNewNickname(""); // Clear input after update
-    alert("닉네임 변경이 완료되었습니다!");
+  // 닉네임 변경
+  const handleNicknameChange = async () => {
+    try {
+      const response = await axios.put("http://192.168.219.194:8080/api/1/nickname", {
+        id: 1,
+        nickname: newNickname,
+      });
+      console.log(response);
+      setNickname(response.data.nickname); // Update nickname in App.js
+      alert("닉네임 변경이 완료되었습니다!");
+    } catch (error) {
+      console.log("에러 발생", error);
+    }
   };
 
   const handleHomeClick = () => {
@@ -81,12 +106,7 @@ const SettingPage = ({ setProfilePicture, setNickname }) => {
           저장
         </button> */}
         <button className="home-button" onClick={handleHomeClick}>
-          <img
-            src={homeImage}
-            alt="설정 아이콘"
-            style={{ width: "30px", height: "25px" }}
-          />{" "}
-          홈으로
+          <img src={homeImage} alt="설정 아이콘" style={{ width: "30px", height: "25px" }} /> 홈으로
         </button>
       </div>
     </div>

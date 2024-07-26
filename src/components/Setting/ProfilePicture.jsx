@@ -15,25 +15,34 @@ const ProfilePicture = ({ onUpload, defaultImage }) => {
     setPreview(URL.createObjectURL(file));
   };
 
+  // 프로필 이미지 업로드
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    // 필요한 요청값들을 formData 객체에다가 담아서 한 번에 보냄
     const formData = new FormData();
     formData.append("profilePicture", selectedFile);
+    formData.append("id", 1);
 
     try {
-      const response = await axios.post("/api/uploadProfilePicture", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
+      const response = await axios.post(
+        "http://192.168.219.194:8080/api/uploadProfilePicture",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         },
-      });
+      );
       const imageUrl = response.data.url; // Adjust according to your API response
       console.log("Image URL from server:", imageUrl); // Debug log
       onUpload(imageUrl); // Notify parent component of the new profile picture URL
       setUploadError(null); // Clear any previous error
     } catch (error) {
       console.error("Error uploading profile picture:", error);
+      alert(error.response.data.error);
       setUploadError("프로필 사진 업로드를 실패하였습니다.");
+      setPreview(defaultImage);
     }
     // alert("프로필 사진 수정이 완료되었습니다!");
   };
@@ -78,11 +87,7 @@ const ProfilePicture = ({ onUpload, defaultImage }) => {
             marginTop: "10px",
           }}
         />
-        <input
-          id="file-upload-button"
-          type="file"
-          onChange={handleFileChange}
-        />
+        <input id="file-upload-button" type="file" onChange={handleFileChange} />
       </div>
 
       <div className="upload-div">
