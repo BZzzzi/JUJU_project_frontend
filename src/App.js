@@ -10,25 +10,27 @@ import SettingPage from "./pages/main/SettingPage";
 
 function App() {
   const [profilePicture, setProfilePicture] = useState(null);
-  const [nickname, setNickname] = useState("홍윤이");
+  const [nickname, setNickname] = useState("");
 
   return (
     <div className="App">
       <Router>
         <Routes>
           <Route
-            path="/Main"
+            path="/api/Main"
             element={
               <Main profilePicture={profilePicture} nickname={nickname} />
             }
           />
           <Route path="/" element={<Login />} />
-          <Route path="/Find" element={<Find />} />
-          <Route path="/Account" element={<AccountForm />} />
+          <Route path="/api/Find" element={<Find />} />
+          <Route path="api/Account" element={<AccountForm />} />
           <Route
-            path="/SettingPage"
+            path="/api/SettingPage"
             element={
               <SettingPage
+                profilePicture={profilePicture}
+                nickname={nickname}
                 setProfilePicture={setProfilePicture}
                 setNickname={setNickname}
               />

@@ -7,7 +7,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import "./full.css";
 import Modal from "./modal";
 import Modal2 from "./modal2";
-import Clock from "../../Todo/Clock";
+import axios from "axios";
 
 class Full extends Component {
   constructor(props) {
@@ -38,6 +38,26 @@ class Full extends Component {
   componentDidMount() {
     this.handleResize(); // Initial resize
     window.addEventListener("resize", this.handleResize);
+
+    // 서버에서 데이터 가져오기
+    axios
+      .get("http://localhost:8080/api/todo")
+      .then((response) => {
+        const events = response.data.map((item) => ({
+          id: item.id,
+          title: item.title,
+          start: item.start || new Date().toISOString(),
+          end: item.end || new Date().toISOString(),
+          backgroundColor: item.color || "blue",
+          extendedProps: {
+            color: item.color || "blue",
+          },
+        }));
+        this.setState({ events });
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+      });
   }
 
   componentWillUnmount() {
@@ -49,9 +69,9 @@ class Full extends Component {
       this.calendarRef.current.getApi().updateSize();
     }
   };
-
+  //clickTimeout
   handleDateClick = (arg) => {
-    const { lastClickedDate, clickTimeout, isDoubleClick } = this.state;
+    const { lastClickedDate, isDoubleClick } = this.state;
 
     if (isDoubleClick) {
       this.setState({
@@ -78,21 +98,13 @@ class Full extends Component {
   };
 
   handleEventClick = (arg) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-
     this.setState({
       isModal2Open: true,
       editingEventId: arg.event.id,
       newEvent: {
-        title: arg.event.title,
-        start: arg.event.startStr || currentDateTime,
-        end: arg.event.endStr || currentDateTime,
+        title: arg.event.title || "",
+        start: arg.event.startStr || "",
+        end: arg.event.endStr || "",
         color: arg.event.backgroundColor || "",
       },
     });
@@ -119,21 +131,35 @@ class Full extends Component {
       return;
     }
 
-    this.setState({
-      events: [
-        ...this.state.events,
-        {
-          id: new Date().getTime().toString(),
-          ...this.state.newEvent,
-          extendedProps: {
-            color: this.state.newEvent.color,
-          },
-        },
-      ],
-      isModalOpen: false,
-      newEvent: { title: "", start: "", end: "", color: "" },
-    });
+    const newEvent = {
+      id: new Date().getTime().toString(),
+      ...this.state.newEvent,
+      extendedProps: {
+        color: this.state.newEvent.color,
+      },
+    };
+
+    // 서버로 데이터 보내기
+    axios
+      .post("http://localhost:8080/api/todo", {
+        title: newEvent.title,
+        start: newEvent.start,
+        end: newEvent.end,
+        color: newEvent.color,
+      })
+      .then((response) => {
+        console.log("Save success:", response.data);
+        this.setState({
+          events: [...this.state.events, response.data], // 서버에서 반환된 데이터를 사용
+          isModalOpen: false,
+          newEvent: { title: "", start: "", end: "", color: "" },
+        });
+      })
+      .catch((error) => {
+        console.error("Save error:", error);
+      });
   };
+
   handleSaveEvent2 = () => {
     const { editingEventId, newEvent, events } = this.state;
 
@@ -142,23 +168,84 @@ class Full extends Component {
       return;
     }
 
-    this.setState({
-      events: events.map((event) =>
-        event.id === editingEventId
-          ? {
-              ...event,
-              title: newEvent.title,
-              start: newEvent.start,
-              end: newEvent.end,
-              backgroundColor: newEvent.color,
-            }
-          : event
-      ),
-      isModal2Open: false,
-      newEvent: { title: "", start: "", end: "", color: "" },
-      editingEventId: null,
-    });
+    const updatedEvent = {
+      id: editingEventId,
+      ...newEvent,
+      extendedProps: {
+        color: newEvent.color,
+      },
+    };
+
+    // 서버로 데이터 업데이트
+    axios
+      .put(`http://localhost:8080/api/todo/${editingEventId}`, {
+        title: newEvent.title,
+        start: newEvent.start,
+        end: newEvent.end,
+        color: newEvent.color,
+      })
+      .then((response) => {
+        console.log("Update success:", response.data);
+        this.setState({
+          events: events.map((event) =>
+            event.id === editingEventId ? response.data : event
+          ),
+          isModal2Open: false,
+          newEvent: { title: "", start: "", end: "", color: "" },
+          editingEventId: null,
+        });
+      })
+      .catch((error) => {
+        console.error("Update error:", error);
+      });
   };
+
+  handleDeleteEvent = () => {
+    const { editingEventId } = this.state;
+
+    if (!editingEventId) {
+      alert("삭제할 일정을 선택해 주세요.");
+      return;
+    }
+
+    // 서버로 데이터 삭제 요청
+    axios
+      .delete(`http://localhost:8080/api/todo/${editingEventId}`)
+      .then(() => {
+        console.log("Delete success");
+
+        // 서버에서 최신 이벤트 목록을 다시 요청하여 클라이언트 상태 업데이트
+        return axios.get("http://localhost:8080/api/todo");
+      })
+      .then((response) => {
+        const events = response.data.map((item) => ({
+          id: item.id,
+          title: item.title,
+          start: item.start || new Date().toISOString(),
+          end: item.end || new Date().toISOString(),
+          backgroundColor: item.color || "blue",
+          extendedProps: {
+            color: item.color || "blue",
+          },
+        }));
+
+        this.setState({
+          events,
+          isModal2Open: false,
+          newEvent: { title: "", start: "", end: "", color: "" },
+          editingEventId: null,
+        });
+      })
+      .catch((error) => {
+        console.error("Delete error:", error);
+      });
+  };
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.events !== this.state.events) {
+      this.calendarRef.current.getApi().render();
+    }
+  }
 
   handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -183,11 +270,14 @@ class Full extends Component {
   render() {
     return (
       <div className="fullMain">
-        <div className="fullClock">
+        {/* <div className="fullClock">
           <Clock />
-        </div>
+        </div> */}
+        <div className="main-logo">JUJU-CALENDAR</div>
+        {/* <div class="main-top-line"></div> */}
         <div className="custom-calendar-container">
           <FullCalendar
+            key={this.state.events.length} // key 추가
             ref={this.calendarRef}
             plugins={[
               dayGridPlugin,
@@ -213,16 +303,12 @@ class Full extends Component {
               today: "Today",
             }}
             aspectRatio={2}
-            events={this.state.events.map((event) => ({
-              ...event,
-              backgroundColor: event.extendedProps.color || "blue",
-              title: event.title,
-            }))}
+            events={this.state.events}
             dateClick={this.handleDateClick}
             eventClick={this.handleEventClick}
             selectable={true}
             handleWindowResize={true}
-            className="custom-calendar"
+            eventClassNames={["custom-class"]} // 이벤트 클래스 이름을 정의
           />
         </div>
 
@@ -241,6 +327,7 @@ class Full extends Component {
             newEvent={this.state.newEvent}
             handleClose={this.handleCloseModal2}
             handleSave={this.handleSaveEvent2}
+            handleDelete={this.handleDeleteEvent}
             handleChange={this.handleInputChange}
             colorMap={this.state.colorMap}
           />

@@ -2,8 +2,9 @@ import React from "react";
 import "./Login.css";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import axios from "axios"; // Axios import
 
-function Login() {
+function Login({ setNickname }) {
   const navigate = useNavigate();
   const {
     register,
@@ -16,8 +17,22 @@ function Login() {
   };
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 1000));
-    alert(JSON.stringify(data));
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/login",
+        data
+      );
+      console.log("로그인 응답:", response.data); // 응답을 콘솔에 출력
+
+      // 로그인 성공 시 닉네임 업데이트
+      setNickname(response.data.user.nickname); // 서버 응답에 따라 적절한 필드로 설정
+
+      alert("로그인 성공");
+      navigate("/main"); // 로그인 후 홈 페이지로 이동
+    } catch (error) {
+      console.error("로그인 실패:", error);
+      alert("로그인 실패: " + (error.response?.data?.message || error.message));
+    }
   };
 
   return (
@@ -26,8 +41,6 @@ function Login() {
         <div className="Logintt2">JUJU__Calendar_</div>
         <div className="Logintt3">
           # 하 이 # juju # 코 린 이 들 # 쌈 @ 뽕 # 🐧 🐹 🐶 🐿️ 🐤
-          {/* <button>🏠</button>
-          <button>❎</button> */}
         </div>
       </div>
       <div className="login-form-mom">
@@ -94,14 +107,14 @@ function Login() {
             <button
               type="button"
               id="Login_button2"
-              onClick={() => handleNavigate("/Account")}
+              onClick={() => handleNavigate("/account")}
             >
               회원가입
             </button>
             <button
               type="button"
               id="Login_button3"
-              onClick={() => handleNavigate("/Find")}
+              onClick={() => handleNavigate("/find")}
             >
               비밀번호 찾기
             </button>
